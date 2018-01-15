@@ -30,6 +30,7 @@ def run_attack(checkpoint, x_adv, epsilon):
 
   num_batches = int(math.ceil(num_eval_examples / eval_batch_size))
   total_corr = 0
+  conf_mat = np.zeros([10, 10], dtype=int)
 
   x_nat = mnist.test.images
   l_inf = np.amax(np.abs(x_nat - x_adv))
@@ -55,15 +56,20 @@ def run_attack(checkpoint, x_adv, epsilon):
 
       dict_adv = {model.x_input: x_batch,
                   model.y_input: y_batch}
-      cur_corr, y_pred_batch = sess.run([model.num_correct, model.y_pred],
-                                        feed_dict=dict_adv)
+      cur_corr, y_pred_batch, conf_mat_batch = sess.run([model.num_correct,
+                                                         model.y_pred,
+                                                         model.conf_mat],
+                                                        feed_dict=dict_adv)
 
       total_corr += cur_corr
       y_pred.append(y_pred_batch)
+      conf_mat += conf_mat_batch
 
   accuracy = total_corr / num_eval_examples
+  conf_mat = conf_mat.astype(float) / conf_mat.sum(axis=1)[:, np.newaxis]
 
   print('Accuracy: {:.2f}%'.format(100.0 * accuracy))
+  print('Confusion matrix:\n{}'.format(np.around(conf_mat, 3)))
   y_pred = np.concatenate(y_pred, axis=0)
   np.save('pred.npy', y_pred)
   print('Output saved at pred.npy')

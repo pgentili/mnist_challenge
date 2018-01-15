@@ -9,3 +9,9 @@ models
 
 # compiled python files
 *.pyc
+
+# model zips
+*.zip
+
+# vim swp files
+*.swp

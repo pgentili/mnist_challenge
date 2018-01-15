@@ -54,6 +54,9 @@ class Model(object):
     self.num_correct = tf.reduce_sum(tf.cast(correct_prediction, tf.int64))
     self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+    self.conf_mat = tf.confusion_matrix(
+        labels=self.y_input, predictions=self.y_pred, num_classes=10)
+
   @staticmethod
   def _weight_variable(shape):
       initial = tf.truncated_normal(shape, stddev=0.1)
