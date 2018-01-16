@@ -33,6 +33,12 @@ class LinfPGDAttack:
       correct_logit = tf.reduce_sum(label_mask * model.pre_softmax, axis=1)
       wrong_logit = tf.reduce_max((1-label_mask) * model.pre_softmax, axis=1)
       loss = -tf.nn.relu(correct_logit - wrong_logit + 50)
+    elif type(loss_func) == int and loss_func >= 0 and loss_func <= 9:
+      # Uses provided class as target of the attack
+      new_labels = loss_func * tf.ones(tf.shape(model.y_input), dtype=tf.int32)
+      y_xent =  tf.nn.sparse_softmax_cross_entropy_with_logits(
+           labels=new_labels, logits=model.pre_softmax)
+      loss = -tf.reduce_sum(y_xent)
     else:
       print('Unknown loss function. Defaulting to cross-entropy')
       loss = model.xent
@@ -58,6 +64,12 @@ class LinfPGDAttack:
 
     return x
 
+def class_attack_path(config, class_label):
+  dot_index = config['store_adv_path'].rfind('.')
+  path = '{}_{}{}'.format(config['store_adv_path'][:dot_index],
+                          class_label,
+                          config['store_adv_path'][dot_index:])
+  return path
 
 if __name__ == '__main__':
   import json
@@ -96,24 +108,55 @@ if __name__ == '__main__':
     eval_batch_size = config['eval_batch_size']
     num_batches = int(math.ceil(num_eval_examples / eval_batch_size))
 
-    x_adv = [] # adv accumulator
+    if not config['class_attack']:
+      x_adv = [] # adv accumulator
 
-    print('Iterating over {} batches'.format(num_batches))
+      print('Iterating over {} batches'.format(num_batches))
 
-    for ibatch in range(num_batches):
-      bstart = ibatch * eval_batch_size
-      bend = min(bstart + eval_batch_size, num_eval_examples)
-      print('batch size: {}'.format(bend - bstart))
+      for ibatch in range(num_batches):
+        bstart = ibatch * eval_batch_size
+        bend = min(bstart + eval_batch_size, num_eval_examples)
+        print('batch size: {}'.format(bend - bstart))
 
-      x_batch = mnist.test.images[bstart:bend, :]
-      y_batch = mnist.test.labels[bstart:bend]
+        x_batch = mnist.test.images[bstart:bend, :]
+        y_batch = mnist.test.labels[bstart:bend]
 
-      x_batch_adv = attack.perturb(x_batch, y_batch, sess)
+        x_batch_adv = attack.perturb(x_batch, y_batch, sess)
 
-      x_adv.append(x_batch_adv)
+        x_adv.append(x_batch_adv)
 
-    print('Storing examples')
-    path = config['store_adv_path']
-    x_adv = np.concatenate(x_adv, axis=0)
-    np.save(path, x_adv)
-    print('Examples stored in {}'.format(path))
+      print('Storing examples')
+      path = config['store_adv_path']
+      x_adv = np.concatenate(x_adv, axis=0)
+      np.save(path, x_adv)
+      print('Examples stored in {}'.format(path))
+    else:
+      for i in range(10):
+        attack = LinfPGDAttack(model,
+                               config['epsilon'],
+                               config['k'],
+                               config['a'],
+                               config['random_start'],
+                               i)
+        x_adv = [] # adv accumulator
+
+        print('Beginning class {}'.format(i))
+        print('Iterating over {} batches'.format(num_batches))
+
+        for ibatch in range(num_batches):
+          bstart = ibatch * eval_batch_size
+          bend = min(bstart + eval_batch_size, num_eval_examples)
+          print('batch size: {}'.format(bend - bstart))
+
+          x_batch = mnist.test.images[bstart:bend, :]
+          y_batch = mnist.test.labels[bstart:bend]
+
+          x_batch_adv = attack.perturb(x_batch, y_batch, sess)
+
+          x_adv.append(x_batch_adv)
+
+        print('Storing examples for class {}'.format(i))
+        path = class_attack_path(config, i)
+        x_adv = np.concatenate(x_adv, axis=0)
+        np.save(path, x_adv)
+        print('Examples stored in {}\n'.format(path))

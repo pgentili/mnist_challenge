@@ -17,6 +17,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 
 from model import Model
+from pgd_attack import class_attack_path
 
 def run_attack(checkpoint, x_adv, epsilon):
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
@@ -30,7 +31,7 @@ def run_attack(checkpoint, x_adv, epsilon):
 
   num_batches = int(math.ceil(num_eval_examples / eval_batch_size))
   total_corr = 0
-  conf_mat = np.zeros([10, 10], dtype=int)
+  conf_mat = np.zeros([10, 10], dtype=np.int32)
 
   x_nat = mnist.test.images
   l_inf = np.amax(np.abs(x_nat - x_adv))
@@ -74,6 +75,8 @@ def run_attack(checkpoint, x_adv, epsilon):
   np.save('pred.npy', y_pred)
   print('Output saved at pred.npy')
 
+  return conf_mat
+
 if __name__ == '__main__':
   import json
 
@@ -83,17 +86,40 @@ if __name__ == '__main__':
   model_dir = config['model_dir']
 
   checkpoint = tf.train.latest_checkpoint(model_dir)
-  x_adv = np.load(config['store_adv_path'])
 
-  if checkpoint is None:
-    print('No checkpoint found')
-  elif x_adv.shape != (10000, 784):
-    print('Invalid shape: expected (10000,784), found {}'.format(x_adv.shape))
-  elif np.amax(x_adv) > 1.0001 or \
-       np.amin(x_adv) < -0.0001 or \
-       np.isnan(np.amax(x_adv)):
-    print('Invalid pixel range. Expected [0, 1], found [{}, {}]'.format(
-                                                              np.amin(x_adv),
-                                                              np.amax(x_adv)))
+  if not config['class_attack']:
+    x_adv = np.load(config['store_adv_path'])
+
+    if checkpoint is None:
+      print('No checkpoint found')
+    elif x_adv.shape != (10000, 784):
+      print('Invalid shape: expected (10000,784), found {}'.format(x_adv.shape))
+    elif np.amax(x_adv) > 1.0001 or \
+         np.amin(x_adv) < -0.0001 or \
+         np.isnan(np.amax(x_adv)):
+      print('Invalid pixel range. Expected [0, 1], found [{}, {}]'.format(
+                                                                np.amin(x_adv),
+                                                                np.amax(x_adv)))
+    else:
+      run_attack(checkpoint, x_adv, config['epsilon'])
   else:
-    run_attack(checkpoint, x_adv, config['epsilon'])
+    combined_conf_mat = np.zeros([10, 10], dtype=np.float32)
+    for i in range(10):
+      path = class_attack_path(config, i)
+      x_adv = np.load(path)
+
+      if checkpoint is None:
+        print('No checkpoint found')
+      elif x_adv.shape != (10000, 784):
+        print('Invalid shape: expected (10000,784), found {}'.format(x_adv.shape))
+      elif np.amax(x_adv) > 1.0001 or \
+           np.amin(x_adv) < -0.0001 or \
+           np.isnan(np.amax(x_adv)):
+        print('Invalid pixel range. Expected [0, 1], found [{}, {}]'.format(
+                                                                  np.amin(x_adv),
+                                                                  np.amax(x_adv)))
+      else:
+        tf.reset_default_graph()
+        conf_mat = run_attack(checkpoint, x_adv, config['epsilon'])
+        combined_conf_mat[:, i] = conf_mat[:, i]
+    print('Final confusion matrix:\n{}'.format(np.around(combined_conf_mat, 3)))
