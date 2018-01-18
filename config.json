@@ -1,6 +1,6 @@
 {
   "_comment": "===== MODEL CONFIGURATION =====",
-  "model_dir": "models/natural",
+  "model_dir": "models/adv_trained",
 
   "_comment": "===== TRAINING CONFIGURATION =====",
   "random_seed": 4557077,
@@ -21,6 +21,6 @@
   "a": 0.01,
   "random_start": true,
   "loss_func": "xent",
-  "store_adv_path": "attacks/attack_nat.npy",
+  "store_adv_path": "attacks/attack_adv.npy",
   "class_attack": true
 }

@@ -71,7 +71,7 @@ def class_attack_path(config, class_label):
                           config['store_adv_path'][dot_index:])
   return path
 
-if __name__ == '__main__':
+def main():
   import json
   import sys
   import math
@@ -160,3 +160,6 @@ if __name__ == '__main__':
         x_adv = np.concatenate(x_adv, axis=0)
         np.save(path, x_adv)
         print('Examples stored in {}\n'.format(path))
+
+if __name__ == '__main__':
+  main()

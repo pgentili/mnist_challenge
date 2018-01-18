@@ -70,14 +70,13 @@ def run_attack(checkpoint, x_adv, epsilon):
   conf_mat = conf_mat.astype(float) / conf_mat.sum(axis=1)[:, np.newaxis]
 
   print('Accuracy: {:.2f}%'.format(100.0 * accuracy))
-  print('Confusion matrix:\n{}'.format(np.around(conf_mat, 3)))
   y_pred = np.concatenate(y_pred, axis=0)
   np.save('pred.npy', y_pred)
   print('Output saved at pred.npy')
 
   return conf_mat
 
-if __name__ == '__main__':
+def main():
   import json
 
   with open('config.json') as config_file:
@@ -122,4 +121,8 @@ if __name__ == '__main__':
         tf.reset_default_graph()
         conf_mat = run_attack(checkpoint, x_adv, config['epsilon'])
         combined_conf_mat[:, i] = conf_mat[:, i]
-    print('Final confusion matrix:\n{}'.format(np.around(combined_conf_mat, 3)))
+    print('Final confusion matrix:\n{}'.format(np.around(combined_conf_mat, 4)))
+    return combined_conf_mat
+
+if __name__ == '__main__':
+  main()

@@ -15,3 +15,6 @@ models
 
 # vim swp files
 *.swp
+
+# hidden files
+.*
