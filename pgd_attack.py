@@ -64,11 +64,11 @@ class LinfPGDAttack:
 
     return x
 
-def class_attack_path(config, class_label):
-  dot_index = config['store_adv_path'].rfind('.')
-  path = '{}_{}{}'.format(config['store_adv_path'][:dot_index],
+def class_attack_path(adv_path, class_label):
+  dot_index = adv_path.rfind('.')
+  path = '{}_{}{}'.format(adv_path[:dot_index],
                           class_label,
-                          config['store_adv_path'][dot_index:])
+                          adv_path[dot_index:])
   return path
 
 def main():
@@ -156,7 +156,7 @@ def main():
           x_adv.append(x_batch_adv)
 
         print('Storing examples for class {}'.format(i))
-        path = class_attack_path(config, i)
+        path = class_attack_path(config['store_adv_path'], i)
         x_adv = np.concatenate(x_adv, axis=0)
         np.save(path, x_adv)
         print('Examples stored in {}\n'.format(path))
