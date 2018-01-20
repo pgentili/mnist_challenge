@@ -21,6 +21,10 @@ from pgd_attack import class_attack_path
 
 NUM_CLASSES = 10
 
+def to_prop(mat):
+  """Converts 2d array of counts to proportions by dividing over row counts."""
+  return mat.astype(np.float64) / mat.sum(axis=1)[:, np.newaxis]
+
 def run_attack(checkpoint, x_adv, epsilon):
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
@@ -123,13 +127,18 @@ def run_class_attack(checkpoint, x_adv_all, epsilon):
         dist_preds[bstart:bend] += (y_pred_batch == i)
 
       # Divide by counts of each class
-      conf_mat = conf_mat.astype(np.float64) / conf_mat.sum(axis=1)[:, np.newaxis]
+      conf_mat = to_prop(conf_mat)
 
       # Take i-th column of i-th confusion matrix, corresponding to proportion of
       # each class that gets classified as i during the class i attack)
       comb_conf_mat[:, i] = conf_mat[:, i]
+  
+  reachable_mat = np.zeros([NUM_CLASSES, NUM_CLASSES + 1], dtype=np.int32)
+  for (i, true_class) in enumerate(mnist.test.labels):
+      reachable_mat[true_class, dist_preds[i]] += 1
+  reachable_mat = to_prop(reachable_mat)
 
-  return comb_conf_mat, dist_preds
+  return comb_conf_mat, dist_preds, reachable_mat
 
 def run_class_attack_ext(model_dir, adv_path, epsilon):
   """e.g. for use in jupyter notebooks to avoid config file."""
